@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Device Control App – UX/UI Prototype</title>
+  <style>
+    :root{
+      --bg:#0f0f14;               /* charcoal */
+      --card:#181a21;             /* deep slate */
+      --ink:#e9ecf1;              /* off-white text */
+      --muted:#a7b0bf;            /* muted text */
+      --brand:#7c9cff;            /* cool accent */
+      --brand-2:#b99470;          /* warm accent */
+      --ok:#5bd29d;               /* success */
+      --warn:#ffb454;             /* warning */
+      --danger:#ff6b6b;           /* danger */
+      --ring: 0 0 0 2px color-mix(in srgb, var(--brand) 55%, transparent);
+      --radius:22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    html,body{height:100%;background:var(--bg);color:var(--ink);font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";}
+    *{box-sizing:border-box}
+
+    /* Layout */
+    .app{position:relative; max-width:420px; margin:0 auto; min-height:100%; display:flex; flex-direction:column;}
+    header{position:sticky; top:0; z-index:10; backdrop-filter: blur(10px); background: linear-gradient(180deg, rgba(15,15,20,.85), rgba(15,15,20,.45)); border-bottom:1px solid rgba(255,255,255,.06)}
+    .h-wrap{display:flex; align-items:center; gap:.8rem; padding:1rem .9rem;}
+    .title{font-weight:700; letter-spacing:.2px; font-size:1.05rem}
+    .sub{color:var(--muted); font-size:.8rem}
+
+    /* Background room illustration */
+    .scene{position:fixed; inset:0; z-index:-1; overflow:hidden;}
+    .scene svg{width:1400px; max-width:none; position:absolute; left:50%; transform:translateX(-50%); opacity:.22;}
+
+    /* Cards / sections */
+    .content{flex:1; padding:1rem; padding-bottom:6.5rem; display:grid; gap:1rem}
+    .card{background: linear-gradient(180deg, color-mix(in srgb, var(--card) 90%, #000 10%), color-mix(in srgb, var(--card) 70%, #000 30%)); border:1px solid rgba(255,255,255,.06); border-radius:var(--radius); box-shadow:var(--shadow);}
+    .card .hd{display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem .5rem 1rem}
+    .card .hd h2{font-size:1rem; margin:0}
+    .card .bd{padding:1rem}
+
+    /* Tabs (pages) */
+    .tabs{display:none}
+    .tabs.active{display:block}
+
+    /* Slider */
+    .slider{appearance:none; width:100%; height:6px; border-radius:999px; background:linear-gradient(90deg, var(--brand), var(--brand-2)); outline:none}
+    .slider::-webkit-slider-thumb{appearance:none; width:22px; height:22px; border-radius:50%; background:linear-gradient(180deg,#fff,#dbe4ff); border:2px solid #c9d4ff; box-shadow: 0 4px 10px rgba(0,0,0,.35)}
+    .row{display:flex; gap:.8rem; align-items:center}
+    .row.wrap{flex-wrap:wrap}
+    .grow{flex:1}
+
+    .pill{display:inline-flex; align-items:center; gap:.5rem; padding:.55rem .9rem; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03)}
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:.6rem; padding:.9rem 1rem; border-radius:14px; border:1px solid rgba(255,255,255,.08); background:color-mix(in srgb, var(--card) 75%, #000 25%); color:var(--ink); font-weight:600; cursor:pointer; transition:transform .04s ease, background .2s ease, border-color .2s ease}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:linear-gradient(180deg, color-mix(in srgb, var(--brand) 18%, #1a1b22 82%), color-mix(in srgb, var(--brand) 8%, #0f1016 92%)); border-color: color-mix(in srgb, var(--brand) 50%, transparent)}
+    .btn.ghost{background:transparent}
+    .btn.ok{background:linear-gradient(180deg, color-mix(in srgb, var(--ok) 25%, #152018 75%), #101a13); border-color: color-mix(in srgb, var(--ok) 55%, transparent)}
+    .btn.warn{background:linear-gradient(180deg, color-mix(in srgb, var(--warn) 25%, #241a10 75%), #1a140d); border-color: color-mix(in srgb, var(--warn) 55%, transparent)}
+
+    /* Countdown */
+    .lcd{font-variant-numeric:tabular-nums; font-size:2.6rem; letter-spacing:.02em; padding:1rem 1.2rem; border-radius:18px; background:#101218; border:1px solid rgba(255,255,255,.06); text-align:center; box-shadow: inset 0 -8px 20px rgba(0,0,0,.35), 0 10px 20px rgba(0,0,0,.2)}
+    .blink{animation:blink .6s step-end infinite}
+    @keyframes blink{50%{opacity:.25}}
+
+    /* Light preview */
+    .light-preview{height:140px; border-radius:18px; border:1px solid rgba(255,255,255,.06); background:#0a0b0f; position:relative; overflow:hidden}
+    .light-dot{position:absolute; inset:20px; border-radius:16px; box-shadow: 0 0 70px 20px rgba(0,0,0,.35) inset, 0 0 60px 10px rgba(0,0,0,.25)}
+    .mode-btn{padding:.6rem .9rem; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.05); cursor:pointer}
+    .mode-btn.active{outline: var(--ring)}
+
+    /* Log table */
+    table{width:100%; border-collapse:collapse;}
+    th, td{border-bottom:1px solid rgba(255,255,255,.06); padding:.7rem; text-align:left; font-size:.9rem}
+    th{color:var(--muted); font-weight:600}
+    .thumb{width:56px; height:56px; border-radius:10px; object-fit:cover; border:1px solid rgba(255,255,255,.08)}
+
+    /* Profile */
+    .field{display:grid; gap:.4rem}
+    .field label{font-size:.82rem; color:var(--muted)}
+    .field input, .field select, .field textarea{background:#0f1117; color:var(--ink); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:.8rem .9rem; font-size:1rem}
+
+    /* Bottom nav */
+    nav.tabsbar{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:420px; z-index:15;}
+    .tabsbar .wrap{display:grid; grid-template-columns: repeat(4, 1fr); gap:.5rem; padding:.6rem;}
+    .tabbtn{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:.6rem; display:flex; flex-direction:column; gap:.25rem; align-items:center; color:var(--muted); font-size:.72rem}
+    .tabbtn.active{color:var(--ink); outline: var(--ring)}
+
+    /* Helpers */
+    .muted{color:var(--muted)}
+    .grid{display:grid; gap:1rem}
+    .cols-2{grid-template-columns:1fr 1fr}
+    .center{display:flex; align-items:center; justify-content:center}
+    .spacer{height:.5rem}
+
+    @media (min-width:420px){ .content{padding-bottom:7.5rem} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="h-wrap">
+        <div>
+          <div class="title">Device Controller</div>
+          <div class="sub">Clean • Premium • Minimal</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Ambient background scene (warm European room + empty wine rack) -->
+    <div class="scene" aria-hidden="true">
+      <svg viewBox="0 0 1200 800" role="img" aria-label="Warm European room with a large empty wine rack">
+        <!-- Walls -->
+        <defs>
+          <linearGradient id="wallGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#5b4a3a"/>
+            <stop offset="100%" stop-color="#2a2320"/>
+          </linearGradient>
+          <linearGradient id="floorGrad" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stop-color="#2a2724"/>
+            <stop offset="100%" stop-color="#1b1816"/>
+          </linearGradient>
+          <linearGradient id="shelfGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#5e3f28"/>
+            <stop offset="100%" stop-color="#3a2719"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="1200" height="600" fill="url(#wallGrad)"/>
+        <rect x="0" y="600" width="1200" height="200" fill="url(#floorGrad)"/>
+        <!-- Lamp glow -->
+        <circle cx="600" cy="120" r="140" fill="#ffdfaa" opacity="0.18"/>
+        <circle cx="600" cy="120" r="90" fill="#ffd699" opacity="0.25"/>
+        <!-- Big empty wine rack -->
+        <g id="rack" transform="translate(260,140)">
+          <rect x="0" y="0" width="680" height="420" fill="url(#shelfGrad)" stroke="#2a1b10" stroke-width="6" rx="12"/>
+          <!-- grid slots -->
+          <g id="slots" transform="translate(20,20)"></g>
+          <!-- bottles layer (will be filled as logs are added) -->
+          <g id="bottles" transform="translate(20,20)"></g>
+        </g>
+      </svg>
+    </div>
+
+    <main class="content">
+      <!-- TIME CONTROL TAB -->
+      <section id="tab-time" class="tabs active card" aria-labelledby="lbl-time">
+        <div class="hd"><h2 id="lbl-time">Operation Time</h2><div class="pill"><span id="sec-label">30</span>s</div></div>
+        <div class="bd grid">
+          <input id="timeRange" class="slider" type="range" min="15" max="60" step="1" value="30" aria-label="Operation seconds"/>
+          <div class="lcd" id="countdown">00:30</div>
+          <div class="row">
+            <button class="btn primary grow" id="btnStart">Start</button>
+            <button class="btn warn grow" id="btnPause">Pause</button>
+            <button class="btn ghost" id="btnReset" title="Reset">Reset</button>
+          </div>
+          <div class="muted">Counts down from the selected seconds to 0. When complete, display blinks for 5s.</div>
+        </div>
+      </section>
+
+      <!-- LIGHT CONTROL TAB -->
+      <section id="tab-light" class="tabs card" aria-labelledby="lbl-light">
+        <div class="hd"><h2 id="lbl-light">Lighting</h2><div class="pill" id="rgb-pill">RGB <span id="rgb-read">#FF3366</span></div></div>
+        <div class="bd grid">
+          <div class="light-preview">
+            <div class="light-dot" id="lightDot"></div>
+          </div>
+          <div class="row wrap">
+            <input id="colorPicker" type="color" value="#ff3366" class="grow" aria-label="Pick color"/>
+            <div class="pill">Brightness cycles 20–100%</div>
+          </div>
+          <div class="row">
+            <button class="mode-btn" data-freq="3">Fast</button>
+            <button class="mode-btn active" data-freq="1">Medium</button>
+            <button class="mode-btn" data-freq="0.5">Slow</button>
+            <div class="spacer"></div>
+            <button class="btn ghost" id="btnLightStop">Stop</button>
+          </div>
+          <div class="muted">Fast = 3Hz • Medium = 1Hz • Slow = 0.5Hz. Breathing between 20%–100%.</div>
+        </div>
+      </section>
+
+      <!-- LOG TAB -->
+      <section id="tab-log" class="tabs card" aria-labelledby="lbl-log">
+        <div class="hd"><h2 id="lbl-log">Logbook</h2><div class="pill" id="logCount">0 entries</div></div>
+        <div class="bd grid">
+          <div class="grid cols-2">
+            <div class="field">
+              <label for="photo">Photo</label>
+              <input id="photo" type="file" accept="image/*" capture="environment"/>
+            </div>
+            <div class="field">
+              <label for="note">Note</label>
+              <input id="note" type="text" placeholder="Write a short note"/>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn ok grow" id="btnSaveLog">Save Entry</button>
+            <button class="btn ghost" id="btnClearLog" title="Clear all">Clear</button>
+          </div>
+          <div id="tableWrap" class="card" style="background:transparent;border:none;box-shadow:none;">
+            <table id="logTable" aria-label="Saved entries">
+              <thead><tr><th>Photo</th><th>Note</th><th>Time</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROFILE TAB -->
+      <section id="tab-profile" class="tabs card" aria-labelledby="lbl-profile">
+        <div class="hd"><h2 id="lbl-profile">Profile</h2><div class="pill">Local Only</div></div>
+        <div class="bd grid">
+          <div class="grid">
+            <div class="field"><label for="name">Name</label><input id="name" type="text" placeholder="Your name"/></div>
+            <div class="field"><label for="email">Email</label><input id="email" type="email" placeholder="name@example.com"/></div>
+            <div class="field"><label for="uid">ID</label><input id="uid" type="text" placeholder="User ID"/></div>
+            <div class="field"><label for="machine">Machine No.</label><input id="machine" type="text" placeholder="Device serial"/></div>
+            <div class="field"><label for="vip">VIP Level</label>
+              <select id="vip">
+                <option value="None">None</option>
+                <option value="Bronze">Bronze</option>
+                <option value="Silver">Silver</option>
+                <option value="Gold">Gold</option>
+                <option value="Platinum">Platinum</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn ok grow" id="btnSaveProfile">Save</button>
+            <button class="btn ghost" id="btnLoadProfile">Load</button>
+          </div>
+          <div class="muted">Profile data is stored locally in your browser (no network).</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom navigation -->
+    <nav class="tabsbar" aria-label="Main">
+      <div class="wrap">
+        <button class="tabbtn active" data-tab="time">Time
+        </button>
+        <button class="tabbtn" data-tab="light">Light
+        </button>
+        <button class="tabbtn" data-tab="log">Log
+        </button>
+        <button class="tabbtn" data-tab="profile">Profile
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    // ---------- Utility ----------
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+
+    // ---------- Background Rack Slots ----------
+    (function buildSlots(){
+      const slots = 6*9; // rows x cols
+      const cols = 9, rows = 6; const gap = 12; const slotSize = 60;
+      const g = document.getElementById('slots');
+      for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+          const x = c*(slotSize+gap);
+          const y = r*(slotSize+gap);
+          const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+          rect.setAttribute('x', x);
+          rect.setAttribute('y', y);
+          rect.setAttribute('width', slotSize);
+          rect.setAttribute('height', slotSize);
+          rect.setAttribute('rx', 10);
+          rect.setAttribute('fill', '#2b1d14');
+          rect.setAttribute('stroke', '#1e140e');
+          rect.setAttribute('stroke-width', '3');
+          g.appendChild(rect);
+        }
+      }
+    })();
+
+    function addBottleToRack(index){
+      const cols = 9; const gap = 12; const slotSize = 60; const row = Math.floor(index/cols); const col = index%cols;
+      const x = col*(slotSize+gap) + slotSize/2; const y = row*(slotSize+gap) + slotSize/2;
+      const g = document.getElementById('bottles');
+      const bottle = document.createElementNS('http://www.w3.org/2000/svg','path');
+      // simple bottle silhouette
+      const path = `M ${x-10} ${y+20} Q ${x-10} ${y-5} ${x-6} ${y-10} L ${x-6} ${y-24} Q ${x-6} ${y-28} ${x-3} ${y-30} L ${x+3} ${y-30} Q ${x+6} ${y-28} ${x+6} ${y-24} L ${x+6} ${y-10} Q ${x+10} ${y-5} ${x+10} ${y+20} Z`;
+      bottle.setAttribute('d', path);
+      bottle.setAttribute('fill', '#67c2a3');
+      bottle.setAttribute('opacity', '0.9');
+      g.appendChild(bottle);
+    }
+
+    // ---------- Tabs ----------
+    $$('.tabbtn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        $$('.tabbtn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        $$('.tabs').forEach(t=>t.classList.remove('active'));
+        document.getElementById('tab-'+tab).classList.add('active');
+      });
+    });
+
+    // ---------- Time Control ----------
+    const timeRange = $('#timeRange');
+    const secLabel = $('#sec-label');
+    const countdown = $('#countdown');
+    const btnStart = $('#btnStart');
+    const btnPause = $('#btnPause');
+    const btnReset = $('#btnReset');
+
+    let remaining = parseInt(timeRange.value,10);
+    let timer = null;
+
+    function fmt(s){
+      const m = Math.floor(s/60).toString().padStart(2,'0');
+      const sec = Math.floor(s%60).toString().padStart(2,'0');
+      return `${m}:${sec}`;
+    }
+
+    function updateDisplay(){
+      countdown.textContent = fmt(remaining);
+    }
+
+    timeRange.addEventListener('input', e=>{
+      const v = parseInt(e.target.value,10);
+      secLabel.textContent = v;
+      remaining = v;
+      updateDisplay();
+    });
+
+    function completeBlink(){
+      countdown.classList.add('blink');
+      setTimeout(()=>countdown.classList.remove('blink'), 5000);
+    }
+
+    btnStart.addEventListener('click', ()=>{
+      if(timer) return; // already running
+      timer = setInterval(()=>{
+        remaining = Math.max(0, remaining-1);
+        updateDisplay();
+        if(remaining===0){
+          clearInterval(timer); timer=null; completeBlink();
+        }
+      }, 1000);
+    });
+
+    btnPause.addEventListener('click', ()=>{
+      if(timer){ clearInterval(timer); timer=null; }
+    });
+
+    btnReset.addEventListener('click', ()=>{
+      if(timer){ clearInterval(timer); timer=null; }
+      remaining = parseInt(timeRange.value,10);
+      updateDisplay();
+      countdown.classList.remove('blink');
+    });
+
+    updateDisplay();
+
+    // ---------- Light Control (RGB + breathing) ----------
+    const colorPicker = $('#colorPicker');
+    const lightDot = $('#lightDot');
+    const btnLightStop = $('#btnLightStop');
+    const rgbRead = $('#rgb-read');
+    let freq = 1; // Hz
+    let animId = null; let startT = null; let running = true;
+
+    function hexToRgb(hex){
+      const m = hex.replace('#','');
+      const bigint = parseInt(m, 16);
+      const r = (bigint >> 16) & 255; const g = (bigint >> 8) & 255; const b = bigint & 255; return {r,g,b};
+    }
+
+    function step(ts){
+      if(!startT) startT = ts;
+      const t = (ts-startT)/1000; // seconds
+      const phase = (t*freq*2*Math.PI);
+      // brightness cycles from 0.2 to 1.0 using sine
+      const k = 0.2 + 0.8*(0.5*(Math.sin(phase)+1));
+      const {r,g,b} = hexToRgb(colorPicker.value);
+      const c = `rgba(${Math.round(r*k)},${Math.round(g*k)},${Math.round(b*k)},1)`;
+      lightDot.style.background = `radial-gradient(circle at 30% 20%, ${c}, rgba(0,0,0,0) 70%), ${c}`;
+      if(running) animId = requestAnimationFrame(step);
+    }
+
+    function startLight(){
+      running = true; startT = null; if(animId) cancelAnimationFrame(animId); animId = requestAnimationFrame(step);
+    }
+
+    function stopLight(){
+      running = false; if(animId) cancelAnimationFrame(animId); animId=null;
+    }
+
+    // Mode buttons
+    $$('.mode-btn').forEach(b=>{
+      b.addEventListener('click',()=>{
+        $$('.mode-btn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        freq = parseFloat(b.dataset.freq);
+        startLight();
+      })
+    })
+
+    colorPicker.addEventListener('input', ()=>{
+      rgbRead.textContent = colorPicker.value.toUpperCase();
+      startLight();
+    });
+
+    btnLightStop.addEventListener('click', ()=>{
+      stopLight();
+    });
+
+    startLight(); // initialize
+
+    // ---------- Logbook (photo + note) ----------
+    const photo = $('#photo');
+    const note = $('#note');
+    const btnSaveLog = $('#btnSaveLog');
+    const btnClearLog = $('#btnClearLog');
+    const logTable = $('#logTable tbody');
+    const logCount = $('#logCount');
+
+    function getLogs(){
+      const raw = localStorage.getItem('logs');
+      return raw? JSON.parse(raw): [];
+    }
+    function setLogs(arr){
+      localStorage.setItem('logs', JSON.stringify(arr));
+      logCount.textContent = `${arr.length} entries`;
+    }
+
+    function renderLogs(){
+      const arr = getLogs();
+      logTable.innerHTML = '';
+      arr.forEach((row,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><img class="thumb" src="${row.img}" alt="thumb"></td><td>${row.note}</td><td>${new Date(row.time).toLocaleString()}</td>`;
+        logTable.appendChild(tr);
+      });
+      setLogs(arr);
+      // refill bottles to match count
+      const bottles = document.getElementById('bottles');
+      while(bottles.firstChild) bottles.removeChild(bottles.firstChild);
+      arr.forEach((_, i)=> addBottleToRack(i));
+    }
+
+    btnSaveLog.addEventListener('click', async ()=>{
+      const file = photo.files && photo.files[0];
+      if(!file){ alert('Please choose a photo.'); return; }
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const imgData = reader.result; // base64
+        const entry = { img: imgData, note: (note.value||'').trim(), time: Date.now() };
+        const arr = getLogs(); arr.unshift(entry); setLogs(arr); renderLogs();
+        // clear inputs
+        photo.value=''; note.value='';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    btnClearLog.addEventListener('click', ()=>{
+      if(confirm('Delete all log entries?')){
+        localStorage.removeItem('logs'); renderLogs();
+      }
+    });
+
+    // ---------- Profile ----------
+    const fields = { name:$('#name'), email:$('#email'), uid:$('#uid'), machine:$('#machine'), vip:$('#vip') };
+    function loadProfile(){
+      const raw = localStorage.getItem('profile');
+      if(!raw) return;
+      const p = JSON.parse(raw);
+      Object.keys(fields).forEach(k=>{ if(p[k]!==undefined) fields[k].value = p[k]; });
+    }
+    function saveProfile(){
+      const p = Object.fromEntries(Object.entries(fields).map(([k,el])=>[k, el.value]));
+      localStorage.setItem('profile', JSON.stringify(p));
+    }
+    $('#btnSaveProfile').addEventListener('click', ()=>{ saveProfile(); alert('Profile saved locally.'); });
+    $('#btnLoadProfile').addEventListener('click', ()=>{ loadProfile(); });
+
+    // Init
+    renderLogs();
+    loadProfile();
+  </script>
+</body>
+</html>
